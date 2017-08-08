@@ -1,6 +1,7 @@
 #GPG Cross Tab App
 library(dplyr)
 library(lazyeval)
+library(descr)
 dataset <- read.csv("/Users/johntaylor/Documents/GPG/Cross Tab Tool/School Survey Data.csv") #This will have to be an input for the user to read in the csv of the survey data")
 
 #Pulling out a list of cross tab variables
@@ -27,81 +28,35 @@ for (i in 1:ncol(dataset)) {
 }
 non_numerics <- non_numerics[!is.na(non_numerics)]
 
-#Doing crosstabs based on the three lists of data
-#for (i in 1:length(crosses)) {
-  assign(paste("cross_tabs", as.character(crosses[2])), dataset) %>%
-    group_by_(as.character(crosses[i])) %>%
-    summarise(
-      for (j in 1: length(numerics)) {
-      assign(as.character(numerics[1]), mean(get(as.character(numerics[1]))))
-     }
-    )
-#}
 
-#ideal
-test <-dataset %>%
-  group_by(PrivPub) %>%
-  summarise(mean_ex = mean(school))
-  
-#successful group_by
-test1 <- dataset %>%
-  group_by_(as.character(crosses[2])) %>%
-  summarise(mean_ex = mean(school))
+#Trying to do this a different way
+#Doing a successful first crosstab
+compmeans(dataset$like, dataset$PrivPub)
 
-#successful summarise
-test2 <- dataset %>%
-  group_by_(as.character(crosses[2])) %>%
-  summarise_(test_avg = interp(~mean(var), var = as.name(as.character(numerics[1]))))
+#Doinga  crosstab with variable references
+x <- paste("dataset", crosses[1], sep='$')
+cross_loop1 <- eval(parse(text = x))
+compmeans(dataset$like, cross_loop1)
 
-#Successful Inner loop
-test3 <- dataset %>%
-  group_by_(as.character(crosses[2])) %>%
-  summarise_(for (j in 1:length(numerics)) {
-    assign(as.character(numerics[j]), interp(~mean(var, var = as.name(as.charcter(numerics[j])))))
-  }
-  )
-
-
-
-#Successful Inner loop
-test3 <- dataset %>%
-  group_by_(as.character(crosses[2])) %>%
-  summarise_(for (j in 1:length(numerics)) {
-    assign(as.character(numerics[j]), interp(~mean(var, var = as.name(as.charcter(numerics[j])))))
-  }
-  )
-
-
-
-
-
-
-
-
-#Doing crosstabs based on the three lists of data
-for (i in 1:length(crosses)) {
-  assign(paste("cross_tabs", as.character(crosses[2])), dataset) %>%
-  group_by_(as.character(crosses[2])) %>%
-  summarise(
-    for (j in 1: length(numerics)) {
-      assign(as.character(numerics[j]), interp(~mean(var), var = as.name(as.character(numerics[j]))))
-    }
-  )
+#Doing it with indexing on the outer loop
+for (i in 1:length(crosses)) { 
+  cross <- paste("dataset", crosses[i], sep="$")
+  cross_loop <- eval(parse(text = cross))
+  crosstab_loop <- compmeans(dataset$like, cross_loop)
+  crosstab_loop <- as.data.frame(crosstab_loop)
+  (assign(paste(crosses[i], "likes", sep="_"), crosstab_loop))
 }
 
-
-test3 <- dataset %>%
-  group_by_(as.character(crosses[2])) %>%
-  summarise_(
-    for (j in 1: length(numerics)) {
-      assign(as.character(numerics[j]), interp(~mean(var), var = as.name(as.character(numerics[j]))))
-    }
-  )
-
-
-
-
-
-
-
+#Doing it with indexing on the outer and inner loop
+for (i in 1:length(crosses)) { 
+  cross <- paste("dataset", crosses[i], sep="$")
+  cross_loop <- eval(parse(text = cross))
+  for (j in 1:length(numerics)) {
+    numeric <- paste("dataset", numerics[j], sep='$')
+    numeric_loop <- eval(parse(text=numeric))
+    crosstab_loop <- compmeans(numeric_loop, cross_loop)
+    crosstab_loop <- as.data.frame(crosstab_loop)
+    (assign(paste(crosses[i], numerics[j], sep="_"), crosstab_loop))
+  }
+}
 
