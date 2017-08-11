@@ -2,7 +2,9 @@
 library(dplyr)
 library(lazyeval)
 library(descr)
+library(shiny)
 dataset <- read.csv("/Users/johntaylor/Documents/GPG/Cross Tab Tool/School Survey Data.csv") #This will have to be an input for the user to read in the csv of the survey data")
+#dataset <- read.csv("/Users/johntaylor/Documents/GPG/Cross Tab Tool/Copy of April baseline survey(1).csv")
 
 #Pulling out a list of cross tab variables
 crosses <- as.list(NULL) #It would probably be best if this loop was done as check boxes on the app
@@ -54,9 +56,48 @@ for (i in 1:length(crosses)) {
   for (j in 1:length(numerics)) {
     numeric <- paste("dataset", numerics[j], sep='$')
     numeric_loop <- eval(parse(text=numeric))
-    crosstab_loop <- compmeans(numeric_loop, cross_loop)
+    crosstab_loop <- compmeans(numeric_loop, cross_loop, plot = F)
     crosstab_loop <- as.data.frame(crosstab_loop)
     (assign(paste(crosses[i], numerics[j], sep="_"), crosstab_loop))
   }
 }
 
+
+
+
+
+
+
+
+library(shiny)
+library(shinydashboard)
+library(leaflet)
+library(data.table)
+library(dplyr)
+library(MASS)
+ui <- fluidPage(titlePanel("GPG CrossTab Tool", windowTitle =  "GPG CrossTab Tool"),
+                sidebarPanel(radioButtons("cross", "Cross Variable", choices = as.list(colnames(dataset))),
+                             radioButtons("summary", "Summary Variable", choices = as.list(colnames(dataset)))
+                ),
+                mainPanel(tableOutput("crosstab_results"), tableOutput("chisquare_results"))
+)
+
+server <- function(input, output, session) {
+    output$crosstab_results <- renderTable({
+      numeric_temp <- paste("dataset", input$summary, sep='$')
+      numeric <- eval(parse(text=numeric_temp))
+      summary_temp <- paste("dataset", input$cross, sep='$')
+      summary1 <- eval(parse(text=summary_temp))
+      crosstab <- compmeans(numeric, summary1)
+      as.data.frame(crosstab)
+    }, rownames = T)
+    output$chisquare_results <- renderTable({
+      numeric_temp <- paste("dataset", input$summary, sep='$')
+      numeric <- eval(parse(text=numeric_temp))
+      summary_temp <- paste("dataset", input$cross, sep='$')
+      summary1 <- eval(parse(text=summary_temp))
+      chisquare_test <- chisq.test(as.factor(summary1), numeric)
+      as.data.frame(chisquare_test)
+    }, rownames = T)
+}
+shinyApp(ui = ui, server = server)
