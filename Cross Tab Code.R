@@ -64,11 +64,7 @@ for (i in 1:length(crosses)) {
 
 
 
-
-
-
-
-
+#Shiny App with Chi Square Test
 library(shiny)
 library(shinydashboard)
 library(leaflet)
@@ -83,21 +79,157 @@ ui <- fluidPage(titlePanel("GPG CrossTab Tool", windowTitle =  "GPG CrossTab Too
 )
 
 server <- function(input, output, session) {
-    output$crosstab_results <- renderTable({
-      numeric_temp <- paste("dataset", input$summary, sep='$')
-      numeric <- eval(parse(text=numeric_temp))
-      summary_temp <- paste("dataset", input$cross, sep='$')
-      summary1 <- eval(parse(text=summary_temp))
-      crosstab <- compmeans(numeric, summary1)
-      as.data.frame(crosstab)
-    }, rownames = T)
-    output$chisquare_results <- renderTable({
-      numeric_temp <- paste("dataset", input$summary, sep='$')
-      numeric <- eval(parse(text=numeric_temp))
-      summary_temp <- paste("dataset", input$cross, sep='$')
-      summary1 <- eval(parse(text=summary_temp))
-      chisquare_test <- chisq.test(as.factor(summary1), numeric)
-      as.data.frame(chisquare_test)
-    }, rownames = T)
+  output$crosstab_results <- renderTable({
+    numeric_temp <- paste("dataset", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("dataset", input$cross, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    crosstab <- compmeans(numeric, summary1)
+    as.data.frame(crosstab)
+  }, rownames = T)
+  output$chisquare_results <- renderTable({
+    numeric_temp <- paste("dataset", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("dataset", input$cross, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    chisquare_test <- chisq.test(summary1, numeric)
+    chisquare_results <- as.data.frame(chisquare_test$p.value)
+    colnames(chisquare_results) <- "P Value of Pearson Chi Square"
+    row.names(chisquare_results) <- as.character(input$cross)
+    chisquare_results
+  }, rownames = T, digits = 8)
 }
 shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Shiny App with Chi Square Test
+library(shiny)
+library(shinydashboard)
+library(leaflet)
+library(data.table)
+library(dplyr)
+library(MASS)
+ui <- fluidPage(titlePanel("GPG CrossTab Tool", windowTitle =  "GPG CrossTab Tool"),
+                sidebarPanel(fileInput("in_file", "Input file:",
+                                       accept=c("txt/csv", "text/comma-separated-values,text/plain", ".csv")),
+                             radioButtons("cross", "Cross Variable", choices = as.list(colnames(input$in_file))),
+                             radioButtons("summary", "Summary Variable", choices = as.list(colnames(input$in_file)))),
+                mainPanel(tableOutput("crosstab_results"), tableOutput("chisquare_results")))
+server <- function(input, output, session) {
+  output$crosstab_results <- renderTable({
+    numeric_temp <- paste("dataset", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("dataset", input$cross, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    crosstab <- compmeans(numeric, summary1)
+    as.data.frame(crosstab)
+  }, rownames = T)
+  output$chisquare_results <- renderTable({
+    numeric_temp <- paste("dataset", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("dataset", input$cross, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    chisquare_test <- chisq.test(summary1, numeric)
+    chisquare_results <- as.data.frame(chisquare_test$p.value)
+    colnames(chisquare_results) <- "P Value of Pearson Chi Square"
+    row.names(chisquare_results) <- as.character(input$cross)
+    chisquare_results
+  }, rownames = T, digits = 8)
+}
+shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ui <- shinyUI(fluidPage(
+  titlePanel("TITLE!"),
+    sidebarPanel(
+      fileInput('file1', 'Choose CSV File',
+                accept=c('text/csv', 
+                         'text/comma-separated-values,text/plain', 
+                         '.csv')),
+      tags$hr(),
+      uiOutput("crosses"),
+      uiOutput("summary"),
+      tags$hr()
+    ),
+    mainPanel(
+      tableOutput("crosstab_results"), tableOutput("chisquare_results")
+  )
+))
+server <- shinyServer(function(input, output) {
+  filedata <- reactive({
+    infile <- input$file1
+    if (is.null(infile)){
+      return(NULL)      
+    }
+    read.csv(infile$datapath)
+  })
+  output$crosses <- renderUI({
+    df <- filedata()
+    if (is.null(df)) return(NULL)
+    items=names(df)
+    names(items)=items
+    selectInput("crosses","Select ONE cross variable from:",items)
+  })
+  output$summary <- renderUI({
+    df <- filedata()
+    if (is.null(df)) return(NULL)
+    items=names(df)
+    names(items)=items
+    selectInput("summary","Select ONE summary variable from:",items)
+  })
+  output$crosstab_results <- renderTable({
+    df <- filedata()
+    numeric_temp <- paste("df", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("df", input$crosses, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    crosstab <- compmeans(numeric, summary1)
+    as.data.frame(crosstab)
+  }, rownames = T)
+  output$chisquare_results <- renderTable({
+    df <- filedata()
+    numeric_temp <- paste("df", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("df", input$crosses, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    chisquare_test <- chisq.test(summary1, numeric)
+    chisquare_results <- as.data.frame(chisquare_test$p.value)
+    colnames(chisquare_results) <- "P Value of Pearson Chi Square"
+    row.names(chisquare_results) <- as.character(input$crosses)
+    chisquare_results
+  }, rownames = T, digits = 8)
+})
+shinyApp(ui = ui, server = server)
+
