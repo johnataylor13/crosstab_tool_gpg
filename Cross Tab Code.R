@@ -102,24 +102,6 @@ server <- function(input, output, session) {
 shinyApp(ui = ui, server = server)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #Shiny App with Chi Square Test
 library(shiny)
 library(shinydashboard)
@@ -158,21 +140,9 @@ shinyApp(ui = ui, server = server)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+#Dynamic Shiny App with Chi Square Test
 ui <- shinyUI(fluidPage(
-  titlePanel("TITLE!"),
+  titlePanel("GPG Cross Tab Tool"),
     sidebarPanel(
       fileInput('file1', 'Choose CSV File',
                 accept=c('text/csv', 
@@ -232,4 +202,156 @@ server <- shinyServer(function(input, output) {
   }, rownames = T, digits = 8)
 })
 shinyApp(ui = ui, server = server)
+
+
+
+
+#Dynamic Shiny App with Chi Square Test and Error Message Removed
+ui <- shinyUI(fluidPage(
+  titlePanel("GPG Cross Tab Tool"),
+  sidebarPanel(
+    fileInput('file1', 'Choose CSV File',
+              accept=c('text/csv', 
+                       'text/comma-separated-values,text/plain', 
+                       '.csv')),
+    tags$hr(),
+    uiOutput("crosses"),
+    uiOutput("summary"),
+    tags$hr()
+  ),
+  mainPanel(
+    tableOutput("crosstab_results"), tableOutput("chisquare_results")
+  )
+))
+server <- shinyServer(function(input, output) {
+  filedata <- reactive({
+    validate(need(input$file1 != "", "Please select a data set")
+             )
+    infile <- input$file1
+    if (is.null(infile)){
+      return(NULL)      
+    }
+    read.csv(infile$datapath)
+  })
+  output$crosses <- renderUI({
+    df <- filedata()
+    if (is.null(df)) return(NULL)
+    items=names(df)
+    names(items)=items
+    selectInput("crosses","Select ONE cross variable from:",items)
+  })
+  output$summary <- renderUI({
+    df <- filedata()
+    if (is.null(df)) return(NULL)
+    items=names(df)
+    names(items)=items
+    selectInput("summary","Select ONE summary variable from:",items)
+  })
+  output$crosstab_results <- renderTable({
+    df <- filedata()
+    numeric_temp <- paste("df", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("df", input$crosses, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    crosstab <- compmeans(numeric, summary1)
+    as.data.frame(crosstab)
+  }, rownames = T)
+  output$chisquare_results <- renderTable({
+    df <- filedata()
+    numeric_temp <- paste("df", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("df", input$crosses, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    chisquare_test <- chisq.test(summary1, numeric)
+    chisquare_results <- as.data.frame(chisquare_test$p.value)
+    colnames(chisquare_results) <- "P Value of Pearson Chi Square"
+    row.names(chisquare_results) <- as.character(input$crosses)
+    chisquare_results
+  }, rownames = T, digits = 8)
+})
+shinyApp(ui = ui, server = server)
+
+
+
+
+
+
+
+
+#Dynamic Shiny App with Chi Square Test and Error Message Removed and level select for variables...
+ui <- shinyUI(fluidPage(
+  titlePanel("GPG Cross Tab Tool"),
+  sidebarPanel(
+    fileInput('file1', 'Choose CSV File',
+              accept=c('text/csv', 
+                       'text/comma-separated-values,text/plain', 
+                       '.csv')),
+    tags$hr(),
+    uiOutput("crosses"),
+    uiOutput("summary"),
+    uiOutput("crosses_selected"),
+    uiOutput("summary_selected"),
+    tags$hr()
+  ),
+  mainPanel(
+    tableOutput("crosstab_results"), tableOutput("chisquare_results")
+  )
+))
+server <- shinyServer(function(input, output) {
+  filedata <- reactive({
+    validate(need(input$file1 != "", "Please select a data set")
+    )
+    infile <- input$file1
+    if (is.null(infile)){
+      return(NULL)      
+    }
+    read.csv(infile$datapath)
+  })
+  output$crosses <- renderUI({
+    df <- filedata()
+    if (is.null(df)) return(NULL)
+    items=names(df)
+    names(items)=items
+    selectInput("crosses","Select ONE cross variable from:",items)
+  })
+  output$summary <- renderUI({
+    df <- filedata()
+    if (is.null(df)) return(NULL)
+    items=names(df)
+    names(items)=items
+    selectInput("summary","Select ONE summary variable from:",items)
+  })
+  output$crosses_selected <- renderUI({
+    df <- filedata()
+    if (is.null(df)) return(NULL)
+    crosses_selected_temp <- paste("df", input$crosses, sep='$')
+    crosses_selected_temp2 <- eval(parse(text=crosses_selected_temp))
+    items <- as.list(levels(crosses_selected_temp2))
+    #names(items) <- items
+    checkboxGroupInput("crosses_selected","Select the groups you want to test", items)
+  })
+  output$crosstab_results <- renderTable({
+    df <- filedata()
+    numeric_temp <- paste("df", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("df", input$crosses, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    crosstab <- compmeans(numeric, summary1) #ISSUE: We don't really want summary1 to be the filter, but rather in input subcategory "crosses_selected"
+    as.data.frame(crosstab)
+  }, rownames = T)
+  output$chisquare_results <- renderTable({
+    df <- filedata()
+    numeric_temp <- paste("df", input$summary, sep='$')
+    numeric <- eval(parse(text=numeric_temp))
+    summary_temp <- paste("df", input$crosses, sep='$')
+    summary1 <- eval(parse(text=summary_temp))
+    chisquare_test <- chisq.test(summary1, numeric) #ISSUE: We don't really want summary1 to be the filter, but rather in input subcategory "crosses_selected"
+    chisquare_results <- as.data.frame(chisquare_test$p.value)
+    colnames(chisquare_results) <- "P Value of Pearson Chi Square" 
+    row.names(chisquare_results) <- as.character(input$crosses)
+    chisquare_results
+  }, rownames = T, digits = 8)
+})
+shinyApp(ui = ui, server = server)
+
 
